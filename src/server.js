@@ -178,9 +178,14 @@ function secretMatches(given) {
 }
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "2mb" }));
 
-app.get("/", (_req, res) => res.json({ ok: true, service: "linea-color-mcp" }));
+let tableroActivo = false;
+app.get("/", (req, res) => {
+  if (tableroActivo && req.accepts(["json", "html"]) === "html") return res.redirect("/login");
+  res.json({ ok: true, service: "linea-color-mcp" });
+});
 
 app.post("/mcp/:secret", async (req, res) => {
   if (!secretMatches(req.params.secret)) return res.status(404).end();
@@ -200,5 +205,16 @@ app.all("/mcp/:secret", (req, res) => {
   if (!secretMatches(req.params.secret)) return res.status(404).end();
   res.status(405).set("Allow", "POST").end();
 });
+
+// Tablero comercial y de precosteo (se activa si hay base de datos configurada)
+if (process.env.DATABASE_URL) {
+  try {
+    const { mountTablero } = await import("../tablero/src/app.js");
+    await mountTablero(app, process.env);
+    tableroActivo = true;
+  } catch (e) {
+    console.error("El tablero no se pudo iniciar (el MCP sigue funcionando):", e.message);
+  }
+}
 
 app.listen(PORT, () => console.log(`linea-color-mcp escuchando en :${PORT}`));
