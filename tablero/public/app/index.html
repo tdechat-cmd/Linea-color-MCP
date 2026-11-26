@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Tablero comercial · Linea Color</title>
+<link rel="stylesheet" href="theme.css">
+<script src="/vendor/d3.min.js"></script>
+<script src="shim.js"></script>
+</head>
+<body>
+<div class="lc-top">
+  <strong>Linea Color</strong>
+  <nav>
+    <span><span data-me="nombre"></span> · <span data-me="rol"></span></span>
+    <a href="usuarios.html">Mi cuenta</a>
+    <form method="post" action="/logout" style="display:inline"><button type="submit">Salir</button></form>
+  </nav>
+</div>
+<div id="dash-root">
+<style>
+  .lc { display: flex; flex-direction: column; gap: var(--cds-gap-xl); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+  .lc h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
+  .lc h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0 0 var(--cds-gap-sm); }
+  .lc-lead { font-size: var(--cds-font-size-body); line-height: 1.55; margin: var(--cds-gap-sm) 0 0; max-width: 60em; }
+  .lc-muted { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .lc-bar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
+  .lc-bar label { display: flex; flex-direction: column; gap: 2px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .lc-bar input[type=date] { font: inherit; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 4px 8px; }
+  .lc-btn { font: inherit; font-size: var(--cds-font-size-caption); color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  .lc-btn:hover { border-color: var(--color-fg-muted); }
+  .lc-btn.lc-primary { background: var(--color-fg); color: var(--color-bg); border-color: var(--color-fg); }
+  .lc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--cds-gap-md); }
+  .lc-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); }
+  .lc-kpi .lc-lab { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .lc-kpi .lc-val { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; margin: 4px 0; white-space: nowrap; min-height: 1.2em; }
+  .lc-kpi .lc-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .lc-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--cds-gap-lg); }
+  .lc-scroll { overflow-x: auto; }
+  .lc-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+  .lc-table th { text-align: left; font-weight: var(--cds-font-weight-medium); color: var(--color-fg-muted); border-bottom: 1px solid var(--color-border-line); padding: 6px 8px; white-space: nowrap; }
+  .lc-table td { border-bottom: 1px solid var(--color-border-line); padding: 6px 8px; vertical-align: top; }
+  .lc-table .n { text-align: right; white-space: nowrap; }
+  .lc-table tr.lc-strong td { font-weight: var(--cds-font-weight-medium); }
+  .lc-neg { color: var(--color-bad); }
+  .lc-pos { color: var(--color-ok); }
+  .lc-chart { position: relative; min-height: 260px; }
+  .lc-legend { display: flex; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-bottom: var(--cds-gap-xs); }
+  .lc-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .lc-sw.lc-line { height: 3px; vertical-align: 3px; }
+  .lc-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: var(--cds-radius); padding: 6px 8px; font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; }
+  .lc-chart text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .lc-chart .domain, .lc-chart .tick line { stroke: var(--cds-chart-axis); }
+  .lc-chart .lc-gridline line { stroke: var(--cds-chart-grid); }
+  .lc-acts { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+  .lc-acts li { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); }
+  .lc-acts .lc-t { font-weight: var(--cds-font-weight-medium); margin: 4px 0; }
+  .lc-acts .lc-d { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; }
+  .lc-tag { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--color-border-line); margin-right: 6px; }
+  .lc-tag.p-Alta { color: var(--color-bad); border-color: var(--color-bad); }
+  .lc-tag.p-Media { color: var(--color-warn); border-color: var(--color-warn); }
+  .lc-tag.p-Baja { color: var(--color-fg-muted); }
+  .lc-chip { display: inline-block; font-size: 11px; border-radius: 999px; padding: 1px 8px; background: var(--color-bg); border: 1px solid var(--color-border-line); white-space: nowrap; }
+  .lc-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--cds-gap-md); }
+  .lc-form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .lc-form input { font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 6px 8px; font-variant-numeric: tabular-nums; }
+  .lc-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--cds-gap-sm); }
+  .lc details summary { cursor: pointer; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .lc details ul { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.6; }
+  .lc-tab { display: flex; flex-direction: column; gap: var(--cds-gap-xl); }
+  .lc-tab[hidden] { display: none; }
+  .lc-chart-sm { position: relative; min-height: 80px; margin-bottom: var(--cds-gap-lg); }
+  .lc-hchart { position: relative; min-height: 120px; }
+  .lc-chart-sm text.lc-inlab { fill: #fff; font-size: var(--cds-font-size-caption); font-weight: 600; }
+  .lc-hchart text, .lc-chart-sm text { fill: var(--cds-text-secondary); font-size: var(--cds-font-size-caption); }
+  .lc-hchart text.lc-vlab { fill: var(--color-fg); font-variant-numeric: tabular-nums; }
+  .lc-legend-wrap { flex-wrap: wrap; margin-top: var(--cds-gap-sm); }
+  .lc-sub2 { font-size: var(--cds-font-size-body); color: var(--color-fg-muted); margin: -4px 0 var(--cds-gap-md); }
+  details.lc-card > summary { cursor: pointer; list-style: none; }
+  details.lc-card > summary h2 { display: inline; }
+  details.lc-card > summary::after { content: ' ▸'; color: var(--color-fg-muted); }
+  details.lc-card[open] > summary::after { content: ' ▾'; }
+  .lc details.lc-more summary { margin-top: var(--cds-gap-md); }
+  .lc-tabs { display: flex; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); }
+  .lc-tabs button { font: inherit; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; margin-bottom: -1px; }
+  .lc-tabs button.lc-on { color: var(--color-fg); border-bottom-color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+</style>
+
+<div class="lc">
+  <header id="titulo">
+    <h1>Tablero comercial · Linea Color</h1>
+  </header>
+  <nav class="lc-tabs" role="tablist" aria-label="Solapas">
+    <button type="button" role="tab" data-tab="comercial" class="lc-on" aria-selected="true">Comercial</button>
+    <button type="button" role="tab" data-tab="precosteo" aria-selected="false">Precosteo</button>
+  </nav>
+  <div id="tab-comercial" class="lc-tab">
+  <header id="resumen">
+    <p class="lc-lead">Del <b data-draw="txt" data-k="desde">—</b> al <b data-draw="txt" data-k="hasta">—</b> la tienda vendió <b data-draw="kpi" data-source="kpis" data-field="venta" data-row="0" data-fmt="money">—</b> en <b data-draw="kpi" data-source="kpis" data-field="pedidos" data-row="0" data-fmt="int">—</b> pedidos, con un margen bruto de <b data-draw="kpi" data-source="kpis" data-field="margen_pct" data-row="0" data-fmt="pct">—</b>. Después de envío y pauta queda una contribución de <b data-draw="kpi" data-source="kpis" data-field="contribucion_pct" data-row="0" data-fmt="pct">—</b>. A este ritmo, el mes cerraría en <b data-draw="kpi" data-source="kpis" data-field="venta_proy" data-row="0" data-fmt="money">—</b> de venta.</p>
+  </header>
+
+  <section id="periodo" class="lc-bar">
+    <label>Desde <input type="date" id="lc-desde" min="2023-01-01" max="2030-12-31"></label>
+    <label>Hasta <input type="date" id="lc-hasta" min="2023-01-01" max="2030-12-31"></label>
+    <button class="lc-btn" data-rango="hoy">Hoy</button>
+    <button class="lc-btn" data-rango="7">Últimos 7 días</button>
+    <button class="lc-btn" data-rango="mes">Este mes</button>
+    <button class="lc-btn" data-rango="mesant">Mes anterior</button>
+  </section>
+
+  <section id="kpis" class="lc-kpis">
+    <div class="lc-card lc-kpi"><div class="lc-lab">Venta neta</div><div class="lc-val dash-skeleton" data-draw="kpi" data-source="kpis" data-field="venta" data-row="0" data-fmt="money" data-fetchpriority="high">—</div><div class="lc-sub">Productos, después de descuentos</div></div>
+    <div class="lc-card lc-kpi"><div class="lc-lab">Pedidos pagos</div><div class="lc-val dash-skeleton" data-draw="kpi" data-source="kpis" data-field="pedidos" data-row="0" data-fmt="int">—</div><div class="lc-sub">Ticket promedio <span data-draw="kpi" data-source="kpis" data-field="ticket" data-row="0" data-fmt="money">—</span></div></div>
+    <div class="lc-card lc-kpi"><div class="lc-lab">Margen bruto</div><div class="lc-val dash-skeleton" data-draw="kpi" data-source="kpis" data-field="margen" data-row="0" data-fmt="money">—</div><div class="lc-sub"><span data-draw="kpi" data-source="kpis" data-field="margen_pct" data-row="0" data-fmt="pct">—</span> de la venta · CMV <span data-draw="kpi" data-source="kpis" data-field="cmv" data-row="0" data-fmt="money">—</span></div></div>
+    <div class="lc-card lc-kpi"><div class="lc-lab">Contribución</div><div class="lc-val dash-skeleton" data-draw="kpi" data-source="kpis" data-field="contribucion" data-row="0" data-fmt="money">—</div><div class="lc-sub"><span data-draw="kpi" data-source="kpis" data-field="contribucion_pct" data-row="0" data-fmt="pct">—</span> de la venta, después de envío, pauta y comisiones</div></div>
+    <div class="lc-card lc-kpi"><div class="lc-lab">Proyección del mes</div><div class="lc-val dash-skeleton" data-draw="kpi" data-source="kpis" data-field="venta_proy" data-row="0" data-fmt="money">—</div><div class="lc-sub">Venta del mes completo al ritmo diario del período</div></div>
+  </section>
+
+  <section id="resultado" class="lc-grid2">
+    <div class="lc-card">
+      <h2>De cada $100 que vendés</h2>
+      <p class="lc-sub2">A dónde va cada peso de venta y cuánto te queda.</p>
+      <div id="chart-cascada" class="lc-chart-sm dash-skeleton" data-draw="g-cascada" data-source="kpis"></div>
+      <h2>Resultado y proyección a fin de mes</h2>
+      <div class="lc-scroll">
+        <table class="lc-table" data-source="cascada" data-row-key="concepto">
+          <thead><tr><th data-field="concepto">Concepto</th><th class="n" data-field="periodo">Período</th><th class="n" data-field="pct">% venta</th><th class="n" data-field="proyeccion">Mes proyectado</th></tr></thead>
+          <tbody data-draw="cascada"></tbody>
+        </table>
+      </div>
+      <p class="lc-muted">La proyección multiplica el ritmo diario del período por los días del mes. Si el período incluye hoy, el día todavía está en curso.</p>
+    </div>
+    <div class="lc-card">
+      <h2>Venta y margen por día</h2>
+      <div class="lc-legend"><span><span class="lc-sw" data-sw="0"></span>Venta neta</span><span><span class="lc-sw lc-line" data-sw="1"></span>Margen bruto</span></div>
+      <div id="chart-diario" class="lc-chart dash-skeleton" data-draw="diario" data-source="diario"></div>
+    </div>
+  </section>
+
+  <section id="acciones">
+    <h2>Acciones sugeridas</h2>
+    <ol class="lc-acts" data-draw="acciones" data-source="acciones"></ol>
+  </section>
+
+  <section id="top" class="lc-card">
+    <h2>Los 10 artículos que más margen dejan</h2>
+    <p class="lc-sub2">Margen bruto en pesos y en % de su venta. Tocá una barra para ver el detalle.</p>
+    <div id="chart-top" class="lc-hchart dash-skeleton" data-draw="g-top" data-source="ranking"></div>
+  </section>
+
+  <section id="ranking" class="lc-card">
+    <div class="lc-head">
+      <h2>Detalle por artículo</h2>
+      <div class="lc-bar">
+        <label>Ordenar por
+          <select class="dash-select" id="lc-orden" aria-label="Ordenar por">
+            <option value="margen">Margen bruto $</option>
+            <option value="venta">Venta</option>
+            <option value="unidades">Unidades</option>
+            <option value="margen_pct">Margen %</option>
+            <option value="contrib">Contribución $</option>
+          </select>
+        </label>
+        <label>Mostrar
+          <select class="dash-select" id="lc-top" aria-label="Cantidad de artículos">
+            <option value="10">Top 10</option>
+            <option value="999">Todos</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="lc-scroll">
+      <table class="lc-table" data-source="ranking" data-row-key="variant_id" data-fetchpriority="low">
+        <thead><tr>
+          <th data-field="puesto">#</th><th data-field="articulo">Artículo</th><th class="n" data-field="unidades">Unid.</th><th class="n" data-field="venta">Venta</th><th class="n" data-field="part">% venta</th><th class="n" data-field="margen">Margen $</th><th class="n" data-field="margen_pct">Margen %</th><th class="n" data-field="contrib">Contribución</th><th class="n" data-field="cobertura_dias">Stock (días)</th><th data-field="accion">Acción</th>
+        </tr></thead>
+        <tbody data-draw="ranking"></tbody>
+      </table>
+    </div>
+    <p class="lc-muted">Contribución por artículo: margen bruto menos su parte de pauta (venta ÷ ROAS), del envío neto y de comisiones, prorrateados por venta. Stock (días): unidades en stock ÷ ritmo de venta del período; vacío si el artículo no controla stock.</p>
+  </section>
+
+  <section id="envios" class="lc-card">
+    <h2>Cuánto te cuesta el envío</h2>
+    <p class="lc-sub2">Lo que pone la tienda (costo estimado menos lo que paga el cliente), por modalidad.</p>
+    <div id="chart-envios" class="lc-hchart dash-skeleton" data-draw="g-envios" data-source="envios"></div>
+    <details class="lc-more"><summary>Ver tabla</summary>
+    <div class="lc-scroll">
+      <table class="lc-table" data-source="envios" data-row-key="modalidad">
+        <thead><tr><th data-field="modalidad">Modalidad</th><th class="n" data-field="pedidos">Pedidos</th><th class="n" data-field="venta">Venta</th><th class="n" data-field="cobrado">Cobrado al cliente</th><th class="n" data-field="costo">Costo estimado</th><th class="n" data-field="neto">Neto a cargo</th><th class="n" data-field="neto_pct">% de su venta</th></tr></thead>
+        <tbody data-draw="envios"></tbody>
+      </table>
+    </div>
+    </details>
+  </section>
+
+  <details id="supuestos" class="lc-card">
+    <summary><h2>Supuestos de gastos (editar)</h2></summary>
+    <p class="lc-muted">Tiendanube no informa lo que pagás de envío ni de pauta, así que se estiman con estos valores. Cambialos y guardá: todo el tablero se recalcula.</p>
+    <form class="lc-form" id="lc-form">
+      <label>ROAS de la pauta (venta ÷ inversión)<input name="roas" type="number" step="0.1" min="0.1"></label>
+      <label>Envío Moova CABA ($ por pedido)<input name="envio_moova_caba" type="number" step="1" min="0"></label>
+      <label>Envío Moova GBA ($ por pedido)<input name="envio_moova_gba" type="number" step="1" min="0"></label>
+      <label>Envío Intralog AMBA ($ por pedido)<input name="envio_intralog" type="number" step="1" min="0"></label>
+      <label>Envío interior ($ por pedido)<input name="envio_interior" type="number" step="1" min="0"></label>
+      <label>Retiro Parque Patricios ($ por pedido)<input name="envio_retiro" type="number" step="1" min="0"></label>
+      <label>Comisión de cobro (% del total)<input name="comision_pct" type="number" step="0.1" min="0"></label>
+    </form>
+    <div class="lc-bar" style="margin-top: var(--cds-gap-md)">
+      <button class="lc-btn lc-primary" id="lc-guardar" type="button">Guardar supuestos</button>
+      <span class="lc-muted" id="lc-ok" hidden>Guardado.</span>
+      <span class="lc-muted lc-neg" id="lc-err" hidden>No se pudo guardar: hace falta ser editor del tablero.</span>
+    </div>
+  </details>
+
+  <details id="notas">
+    <summary>Cómo se calcula cada número</summary>
+    <ul>
+      <li><b>Venta neta</b>: precio de los artículos de los pedidos pagos menos el descuento del pedido, prorrateado entre sus artículos. No incluye el envío cobrado.</li>
+      <li><b>CMV</b>: unidades vendidas × costo cargado en cada variante de Tiendanube. Si un artículo no tiene costo, se usa el % de costo promedio del resto.</li>
+      <li><b>Margen bruto</b>: venta neta − CMV.</li>
+      <li><b>Envío neto</b>: costo estimado por pedido según la modalidad (ver supuestos) menos lo que pagó el cliente por el envío.</li>
+      <li><b>Pauta</b>: venta neta ÷ ROAS.</li>
+      <li><b>Contribución</b>: margen bruto − envío neto − pauta − comisiones de cobro.</li>
+      <li>Las fechas son en hora de Argentina. Solo cuenta pedidos con pago aprobado, de la tienda Tiendanube (no Mercado Libre).</li>
+    </ul>
+  </details>
+  </div>
+
+  <div id="tab-precosteo" class="lc-tab" hidden>
+    <style>
+      .lc-sel { font: inherit; color: var(--color-fg); }
+      .lc-row { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: end; }
+      .lc-row label { display: flex; flex-direction: column; gap: 4px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+      .lc-row input, .lc-row select:not(.dash-select) { font: inherit; color: var(--color-fg); background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 6px 8px; }
+    </style>
+
+    <section id="paridad" class="lc-card">
+      <h2>Costo del kg de plástico</h2>
+      <p class="lc-muted">El sugerido sale de la paridad de importación del polipropileno: precio internacional CFR Buenos Aires + seguro, con arancel, tasa estadística, gastos de nacionalización e IVA, al dólar mayorista. Incluye IVA para quedar en la misma base que los costos y precios finales de la tienda. Podés usarlo o cargar tu propio costo por kg (con IVA).</p>
+      <div class="lc-kpis" style="margin: var(--cds-gap-md) 0">
+        <div class="lc-card lc-kpi"><div class="lc-lab">Sugerido por paridad ($/kg)</div><div class="lc-val dash-skeleton" data-draw="kg" data-source="costo_kg" data-field="sugerido_kg" data-row="0" data-fmt="money">—</div><div class="lc-sub">USD <span data-draw="kg" data-source="costo_kg" data-field="nacionalizado_usd_t" data-row="0" data-fmt="int">—</span>/t puesto en Argentina</div></div>
+        <div class="lc-card lc-kpi"><div class="lc-lab">Costo usado en el precosteo ($/kg)</div><div class="lc-val dash-skeleton" data-draw="kg" data-source="costo_kg" data-field="usado_kg" data-row="0" data-fmt="money">—</div><div class="lc-sub"><span data-draw="kg" data-source="costo_kg" data-field="origen" data-row="0" data-fmt="text">—</span></div></div>
+      </div>
+      <form class="lc-form" id="lp-paridad">
+        <label>Precio internacional CFR (USD/t)<input name="precio_cfr_usd_t" type="number" step="1" min="0"></label>
+        <label>Seguro (% sobre CFR)<input name="seguro_pct" type="number" step="0.1" min="0"></label>
+        <label>Derecho de importación (%)<input name="arancel_pct" type="number" step="0.1" min="0"></label>
+        <label>Tasa estadística (%)<input name="tasa_est_pct" type="number" step="0.1" min="0"></label>
+        <label>Gastos de nacionalización y flete interno (%)<input name="gastos_pct" type="number" step="0.1" min="0"></label>
+        <label>IVA (%), para comparar con costos finales<input name="iva_pct" type="number" step="0.1" min="0"></label>
+        <label>Tipo de cambio ($/USD)<input name="tipo_cambio" type="number" step="0.01" min="0"></label>
+        <label>Costo del kg propio ($/kg, vacío = sugerido)<input name="costo_kg_manual" type="number" step="0.01" min="0" placeholder="Usar sugerido"></label>
+      </form>
+      <div class="lc-bar" style="margin-top: var(--cds-gap-md)">
+        <button class="lc-btn lc-primary" id="lp-p-guardar" type="button">Guardar</button>
+        <button class="lc-btn" id="lp-p-sugerido" type="button">Volver al sugerido</button>
+        <span class="lc-muted" id="lp-p-ok" hidden>Guardado.</span>
+        <span class="lc-muted lc-neg" id="lp-p-err" hidden>No se pudo guardar: hace falta ser editor del tablero.</span>
+      </div>
+      <p class="lc-muted">Referencia de los valores iniciales: <span data-draw="fuente" data-source="paridad" data-field="fuente" data-row="0">—</span></p>
+    </section>
+
+    <section id="precosteo-res" class="lc-card">
+      <h2>Costo precosteado por artículo</h2>
+      <p class="lc-sub2">De qué está hecho el costo de cada artículo.</p>
+      <div class="lc-legend lc-legend-wrap"><span><span class="lc-sw" data-csw="0"></span>Plástico</span><span><span class="lc-sw" data-csw="1"></span>Packaging</span><span><span class="lc-sw" data-csw="2"></span>Etiquetas</span><span><span class="lc-sw" data-csw="3"></span>Otros</span></div>
+      <div id="chart-precosteo" class="lc-hchart" data-draw="g-precosteo" data-source="precosteo"></div>
+      <div class="lc-scroll">
+        <table class="lc-table" data-source="precosteo" data-row-key="variant_id">
+          <thead><tr><th data-field="articulo">Artículo</th><th class="n" data-field="plastico">Plástico</th><th class="n" data-field="packaging">Packaging</th><th class="n" data-field="etiquetas">Etiquetas</th><th class="n" data-field="otros">Otros</th><th class="n" data-field="costo_total">Costo precosteo</th><th class="n" data-field="costo_tn">Costo en Tiendanube</th><th class="n" data-field="dif_pct">Diferencia</th><th class="n" data-field="precio">Precio de venta</th><th class="n" data-field="margen_pct">Margen con precosteo</th></tr></thead>
+          <tbody data-draw="precosteo"></tbody>
+        </table>
+      </div>
+      <p class="lc-muted">Diferencia: cuánto más (o menos) cuesta según el precosteo que según el costo cargado en Tiendanube. Margen: (precio de venta actual − costo precosteo) ÷ precio, con el mismo criterio que la solapa comercial.</p>
+    </section>
+
+    <section id="consumos" class="lc-card">
+      <h2>Consumos por artículo</h2>
+      <p class="lc-muted">Cargá cuánto lleva cada artículo por unidad de venta (por ejemplo, kg de PP de un combo completo, cajas, etiquetas).</p>
+      <div class="lc-row">
+        <label>Artículo<select class="dash-select" data-draw="lp-art" data-source="catalogo" aria-label="Artículo"></select></label>
+        <label>Insumo<select class="dash-select" data-draw="lp-ins" data-source="insumos_det" aria-label="Insumo"></select></label>
+        <label>Cantidad<input id="lp-c-cant" type="number" step="0.0001" min="0" style="width: 8em"></label>
+        <button class="lc-btn lc-primary" id="lp-c-agregar" type="button">Agregar consumo</button>
+        <span class="lc-muted lc-neg" id="lp-c-falta" hidden>Elegí artículo, insumo y una cantidad mayor a cero.</span>
+        <span class="lc-muted" id="lp-c-ok" hidden>Listo.</span>
+        <span class="lc-muted lc-neg" id="lp-c-err" hidden>No se pudo guardar: hace falta ser editor del tablero.</span>
+      </div>
+      <div class="lc-scroll" style="margin-top: var(--cds-gap-md)">
+        <table class="lc-table" data-source="consumos_det" data-row-key="id">
+          <thead><tr><th data-field="insumo">Insumo</th><th data-field="tipo">Rubro</th><th class="n" data-field="cantidad">Cantidad</th><th class="n" data-field="costo_unit">Costo unitario</th><th class="n" data-field="subtotal">Subtotal</th><th></th></tr></thead>
+          <tbody data-draw="consumos_det"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="insumos" class="lc-card">
+      <h2>Insumos y precios</h2>
+      <p class="lc-muted">Cargá una vez cada insumo con su costo. Si cambia un precio, se actualizan todos los artículos que lo usan. El plástico toma siempre el costo del kg de arriba.</p>
+      <div class="lc-scroll">
+        <table class="lc-table" data-source="insumos_det" data-row-key="id">
+          <thead><tr><th data-field="nombre">Insumo</th><th data-field="tipo_label">Rubro</th><th data-field="unidad">Unidad</th><th class="n" data-field="costo_unit">Costo unitario</th></tr></thead>
+          <tbody data-draw="insumos_det"></tbody>
+        </table>
+      </div>
+      <form class="lc-row" id="lp-ins-form" style="margin-top: var(--cds-gap-md)">
+        <label>Editar<select class="dash-select" data-draw="lp-ins-edit" data-source="insumos_det" aria-label="Insumo a editar"></select></label>
+        <label>Nombre<input name="nombre" type="text" maxlength="80"></label>
+        <label>Rubro<select name="tipo" class="dash-select">
+          <option value="packaging">Packaging</option>
+          <option value="etiqueta">Etiquetas</option>
+          <option value="materia_prima">Otra materia prima</option>
+          <option value="mano_obra">Mano de obra</option>
+          <option value="otro">Otro</option>
+          <option value="plastico">Plástico (PP)</option>
+        </select></label>
+        <label>Unidad<input name="unidad" type="text" maxlength="12" value="u." style="width: 6em"></label>
+        <label>Costo unitario con IVA ($)<input name="costo_unit" type="number" step="0.01" min="0" style="width: 9em"></label>
+        <button class="lc-btn lc-primary" id="lp-i-guardar" type="button">Guardar insumo</button>
+        <button class="lc-btn" id="lp-i-borrar" type="button">Borrar</button>
+        <span class="lc-muted" id="lp-i-ok" hidden>Listo.</span>
+        <span class="lc-muted lc-neg" id="lp-i-err" hidden>No se pudo guardar: hace falta ser editor del tablero.</span>
+        <span class="lc-muted lc-neg" id="lp-i-usado" hidden>Ese insumo está en uso: quitá primero sus consumos.</span>
+      </form>
+    </section>
+  </div>
+</div>
+
+<script src="calcs.js"></script>
+<script src="precosteo.js"></script>
+<script>
+  // Período por defecto: el mes en curso
+  (function () {
+    const hoy = LC.todayAR(), p = dash.params();
+    if (p.desde === '2026-11-01' && p.hasta === '2026-11-25' && hoy !== '2026-11-25') {
+      dash.setParams({ desde: hoy.slice(0, 8) + '01', hasta: hoy });
+    }
+  })();
+
+  dash.loader('ventas', {
+    description: 'Recorre todas las páginas de pedidos pagos del período y arma una fila por artículo vendido, con el descuento del pedido prorrateado y la fecha en hora de Argentina.',
+    fn: async ({ answer, call, args }) => {
+      const err = (a) => a && a.error ? (a.error.message || String(a.error)) : null;
+      if (err(answer)) throw new Error(err(answer));
+      let orders = (answer && answer.orders) || [];
+      const total = Number(answer && answer.total) || orders.length;
+      const per = Number(args.per_page) || 200;
+      const pages = Math.ceil(total / per);
+      let truncated = false;
+      for (let p = 2; p <= pages; p++) {
+        if (p > 20) { truncated = true; break; }
+        const a = await call('list_orders', { ...args, page: p });
+        if (err(a)) throw new Error(err(a));
+        orders = orders.concat((a && a.orders) || []);
+      }
+      const n = (v) => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+      const day = (s) => { const t = Date.parse(String(s).replace(/([+-]\d\d)(\d\d)$/, '$1:$2')); return Number.isFinite(t) ? new Date(t - 3 * 3600e3).toISOString().slice(0, 10) : String(s).slice(0, 10); };
+      const rows = [];
+      for (const o of orders) {
+        const lines = (o.products || []).map((p) => ({ p, bruto: n(p.quantity) * n(p.price) }));
+        const sub = n(o.subtotal) || lines.reduce((s, l) => s + l.bruto, 0);
+        const desc = n(o.discount);
+        lines.forEach((l, i) => rows.push({
+          pedido: String(o.number), linea: i, fecha: day(o.created_at),
+          envio_tipo: o.shipping_option || '', provincia: o.province || '',
+          envio_cobrado: i === 0 ? n(o.shipping) : 0, total: i === 0 ? n(o.total) : 0,
+          variant_id: String(l.p.variant_id), articulo: l.p.name, cantidad: n(l.p.quantity), precio: n(l.p.price),
+          neto: Math.round((l.bruto - (sub ? (desc * l.bruto) / sub : 0)) * 100) / 100,
+        }));
+      }
+      return { rows, columns: ['pedido', 'linea', 'fecha', 'envio_tipo', 'provincia', 'envio_cobrado', 'total', 'variant_id', 'articulo', 'cantidad', 'precio', 'neto'], truncated };
+    },
+  });
+
+  dash.loader('catalogo', {
+    description: 'Abre el catálogo en una fila por variante, con su costo y stock.',
+    fn: ({ answer }) => {
+      if (answer && answer.error) throw new Error(answer.error.message || String(answer.error));
+      const rows = [];
+      for (const p of (answer && answer.products) || []) {
+        for (const v of p.variants || []) {
+          rows.push({
+            variant_id: String(v.id), articulo: p.name + (v.values && v.values.length ? ' · ' + v.values.join(' / ') : ''),
+            publicado: p.published !== false, sku: v.sku || '', precio_promo: v.promotional_price == null ? null : Number(v.promotional_price),
+            costo: v.cost == null ? null : Number(v.cost), stock: v.stock == null ? null : Number(v.stock),
+          });
+        }
+      }
+      return { rows, columns: ['variant_id', 'articulo', 'publicado', 'sku', 'precio_promo', 'costo', 'stock'] };
+    },
+  });
+
+  dash.calc('kpis', { inputs: ['ventas', 'catalogo', 'supuestos'], title: 'Indicadores del período', description: 'Venta, CMV, margen, gastos estimados, contribución y proyección del mes.',
+    fn: (ventas, catalogo, supuestos) => LC.kpis(ventas, catalogo, supuestos, dash.params()) });
+  dash.calc('cascada', { inputs: ['kpis'], title: 'Resultado y proyección', description: 'De la venta a la contribución, con el mes proyectado al ritmo del período.',
+    fn: (kpis) => LC.cascada(kpis) });
+  dash.calc('diario', { inputs: ['ventas', 'catalogo'], title: 'Venta y margen por día', description: 'Venta neta, margen bruto y pedidos de cada día.',
+    fn: (ventas, catalogo) => LC.diario(ventas, catalogo) });
+  dash.calc('envios', { inputs: ['ventas', 'supuestos'], title: 'Envíos por modalidad', description: 'Pedidos, envío cobrado y costo estimado según la modalidad.',
+    fn: (ventas, supuestos) => LC.envios(ventas, supuestos) });
+  dash.calc('ranking', { inputs: ['ventas', 'catalogo', 'supuestos'], title: 'Ranking de artículos', description: 'Venta, margen, contribución y cobertura de stock de cada artículo.',
+    fn: (ventas, catalogo, supuestos) => LC.ranking(ventas, catalogo, supuestos, dash.params()) });
+  dash.calc('acciones', { inputs: ['ranking', 'envios', 'kpis', 'ventas', 'catalogo'], title: 'Acciones sugeridas', description: 'Reglas sobre el ranking, los envíos y la contribución.',
+    fn: (ranking, envios, kpis, ventas, catalogo) => LC.acciones(ranking, envios, kpis, ventas, catalogo) });
+
+  const fmtMoney = (v) => (v < 0 ? '−' : '') + '$ ' + Math.abs(Math.round(v)).toLocaleString('es-AR');
+  const fmtInt = (v) => Math.round(v).toLocaleString('es-AR');
+  const fmtPct = (v) => (Math.round(v * 10) / 10).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+  const fmtDay = (s) => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
+  const fmt = { money: fmtMoney, int: fmtInt, pct: fmtPct };
+  window.LCF = { fmtMoney, fmtInt, fmtPct };
+
+  function settle(el, st) { if (st !== 'loading') el.classList.remove('dash-skeleton'); }
+
+  dash.draw('kpi', (el) => {
+    const d = dash.data('kpis');
+    settle(el, d.status);
+    if (d.status !== 'ok' || !d.data || !d.data[0]) { el.textContent = '—'; return; }
+    const v = d.data[0][el.dataset.field];
+    el.textContent = v == null ? '—' : (fmt[el.dataset.fmt] || fmtInt)(v);
+  });
+
+  dash.draw('txt', (el) => {
+    const p = dash.params(), P = LC.periodo(p);
+    const s = el.dataset.k === 'desde' ? P.desde : P.hasta;
+    el.textContent = s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4);
+  });
+
+  function tableBody(el, id, build, cols) {
+    const d = dash.data(id);
+    if (d.status === 'error') { el.replaceChildren(); const tr = el.insertRow(); const td = tr.insertCell(); td.colSpan = cols; td.textContent = 'No se pudo cargar esta tabla.'; return; }
+    if (d.status !== 'ok') return;
+    el.replaceChildren();
+    if (!d.data.length) { const tr = el.insertRow(); const td = tr.insertCell(); td.colSpan = cols; td.className = 'lc-muted'; td.textContent = 'Sin ventas en el período.'; return; }
+    build(d.data);
+  }
+  function cell(tr, text, cls) { const td = tr.insertCell(); td.textContent = text; if (cls) td.className = cls; return td; }
+
+  dash.draw('cascada', (el) => tableBody(el, 'cascada', (rows) => {
+    for (const r of rows) {
+      const tr = el.insertRow(); tr.dataset.key = r.concepto;
+      if (['Venta neta', 'Margen bruto', 'Contribución'].includes(r.concepto)) tr.className = 'lc-strong';
+      cell(tr, r.concepto);
+      cell(tr, fmtMoney(r.periodo), 'n' + (r.concepto === 'Contribución' && r.periodo < 0 ? ' lc-neg' : ''));
+      cell(tr, fmtPct(r.pct), 'n');
+      cell(tr, fmtMoney(r.proyeccion), 'n');
+    }
+  }, 4));
+
+  dash.draw('envios', (el) => tableBody(el, 'envios', (rows) => {
+    for (const r of rows) {
+      const tr = el.insertRow(); tr.dataset.key = r.modalidad;
+      cell(tr, r.modalidad); cell(tr, fmtInt(r.pedidos), 'n'); cell(tr, fmtMoney(r.venta), 'n');
+      cell(tr, fmtMoney(r.cobrado), 'n'); cell(tr, fmtMoney(r.costo), 'n'); cell(tr, fmtMoney(r.neto), 'n');
+      cell(tr, fmtPct(r.neto_pct), 'n' + (r.neto_pct > 15 ? ' lc-neg' : ''));
+    }
+  }, 7));
+
+  dash.draw('ranking', (el) => tableBody(el, 'ranking', (rows) => {
+    const sel = document.getElementById('lc-orden'), topSel = document.getElementById('lc-top');
+    const key = (sel && sel.value) || 'margen', top = Number((topSel && topSel.value) || 15);
+    const sorted = rows.slice().sort((a, b) => (b[key] ?? -Infinity) - (a[key] ?? -Infinity)).slice(0, top);
+    for (const r of sorted) {
+      const tr = el.insertRow(); tr.dataset.key = r.variant_id;
+      cell(tr, String(r.puesto)); cell(tr, r.articulo); cell(tr, fmtInt(r.unidades), 'n');
+      cell(tr, fmtMoney(r.venta), 'n'); cell(tr, fmtPct(r.part), 'n'); cell(tr, fmtMoney(r.margen), 'n');
+      cell(tr, fmtPct(r.margen_pct), 'n' + (r.margen_pct < 45 ? ' lc-neg' : ''));
+      cell(tr, fmtMoney(r.contrib), 'n' + (r.contrib < 0 ? ' lc-neg' : ''));
+      cell(tr, r.cobertura_dias == null ? '—' : fmtInt(r.cobertura_dias), 'n' + (r.cobertura_dias != null && r.cobertura_dias < 15 ? ' lc-neg' : ''));
+      const td = tr.insertCell(); const chip = document.createElement('span'); chip.className = 'lc-chip'; chip.textContent = r.accion; td.appendChild(chip);
+    }
+  }, 10));
+  document.querySelectorAll('#lc-orden, #lc-top').forEach((s) => s.addEventListener('change', () => dash.draw('ranking')));
+
+  dash.draw('acciones', (el) => {
+    const d = dash.data('acciones');
+    if (d.status === 'error') { el.replaceChildren(); const li = document.createElement('li'); li.textContent = 'No se pudieron calcular las acciones.'; el.appendChild(li); return; }
+    if (d.status !== 'ok') return;
+    el.replaceChildren();
+    if (!d.data || !d.data.length) { const li = document.createElement('li'); li.className = 'lc-muted'; li.textContent = 'Sin acciones para este período.'; el.appendChild(li); return; }
+    for (const a of d.data) {
+      const li = document.createElement('li');
+      const tag = document.createElement('span'); tag.className = 'lc-tag p-' + a.prioridad; tag.textContent = a.prioridad;
+      const tema = document.createElement('span'); tema.className = 'lc-muted'; tema.textContent = a.tema;
+      const t = document.createElement('div'); t.className = 'lc-t'; t.textContent = a.accion;
+      const dd = document.createElement('div'); dd.className = 'lc-d'; dd.textContent = a.detalle;
+      li.append(tag, tema, t, dd); el.appendChild(li);
+    }
+  });
+
+  dash.draw('diario', (el) => {
+    const d = dash.data('diario');
+    if (d.status === 'error') { el.classList.remove('dash-skeleton'); el.textContent = 'No se pudo cargar la venta diaria.'; return; }
+    if (d.status !== 'ok') return;
+    el.classList.remove('dash-skeleton');
+    el.replaceChildren();
+    const rows = d.data || [];
+    if (!rows.length) { el.textContent = 'Sin ventas en el período.'; return; }
+    const W = Math.max(260, el.clientWidth || 600), H = 260, m = { t: 10, r: 8, b: 26, l: 8 };
+    const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img')
+      .attr('aria-label', 'Venta neta y margen bruto por día del período');
+    const yMax = d3.max(rows, (r) => r.venta) || 1;
+    const y = d3.scaleLinear().domain([0, yMax]).nice().range([H - m.b, m.t]);
+    const short = (v) => v >= 1e6 ? '$' + (v / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + 'M' : '$' + Math.round(v / 1e3) + 'k';
+    const yAxis = svg.append('g').call(d3.axisLeft(y).ticks(4).tickFormat(short).tickSize(0));
+    let lw = 0; yAxis.selectAll('text').each(function () { lw = Math.max(lw, this.getComputedTextLength()); });
+    m.l = Math.ceil(lw) + 10; yAxis.remove();
+    const x = d3.scaleBand().domain(rows.map((r) => r.fecha)).range([m.l, W - m.r]).padding(0.25);
+    svg.append('g').attr('class', 'lc-gridline').attr('transform', `translate(${m.l},0)`)
+      .call(d3.axisLeft(y).ticks(4).tickFormat(short).tickSize(-(W - m.l - m.r))).call((g) => g.select('.domain').remove());
+    const every = Math.max(1, Math.ceil(rows.length / Math.max(2, Math.floor((W - m.l) / 46))));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(6).tickValues(rows.map((r) => r.fecha).filter((_, i) => i % every === 0)).tickFormat(fmtDay));
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => x(r.fecha)).attr('width', x.bandwidth()).attr('y', (r) => y(Math.max(0, r.venta))).attr('height', (r) => y(0) - y(Math.max(0, r.venta)))
+      .attr('rx', 2).style('fill', dash.colors[0]);
+    const line = d3.line().x((r) => x(r.fecha) + x.bandwidth() / 2).y((r) => y(r.margen));
+    svg.append('path').datum(rows).attr('d', line).attr('fill', 'none').style('stroke', dash.colors[1]).attr('stroke-width', 2);
+    svg.append('g').selectAll('circle').data(rows).join('circle').attr('cx', (r) => x(r.fecha) + x.bandwidth() / 2).attr('cy', (r) => y(r.margen)).attr('r', 2.5).style('fill', dash.colors[1]);
+    const tip = d3.select(el).append('div').attr('class', 'lc-tip').style('display', 'none');
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => x(r.fecha) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', m.t).attr('height', H - m.t - m.b)
+      .attr('fill', 'transparent')
+      .on('pointerenter pointermove', (ev, r) => {
+        tip.style('display', null).text('');
+        tip.append('div').style('font-weight', 600).text(fmtDay(r.fecha));
+        tip.append('div').text('Venta ' + fmtMoney(r.venta));
+        tip.append('div').text('Margen ' + fmtMoney(r.margen));
+        tip.append('div').text(fmtInt(r.pedidos) + ' pedidos');
+        const [px] = d3.pointer(ev, el); const tw = tip.node().offsetWidth;
+        tip.style('left', Math.min(Math.max(0, px + 10), W - tw - 4) + 'px').style('top', '8px');
+      })
+      .on('pointerleave', () => tip.style('display', 'none'));
+  });
+
+  // Swatches de la leyenda
+  document.querySelectorAll('[data-sw]').forEach((s) => { s.style.background = dash.colors[Number(s.dataset.sw)]; });
+
+  // Controles de período
+  const iD = document.getElementById('lc-desde'), iH = document.getElementById('lc-hasta');
+  function syncFechas() {
+    const p = dash.params();
+    if (iD && document.activeElement !== iD) iD.value = p.desde || '';
+    if (iH && document.activeElement !== iH) iH.value = p.hasta || '';
+  }
+  [iD, iH].forEach((inp) => {
+    if (!inp) return;
+    inp.addEventListener('change', () => {
+      if (!(inp.value && inp.validity.valid)) return;
+      const p = { desde: iD.value || dash.params().desde, hasta: iH.value || dash.params().hasta };
+      if (p.desde > p.hasta) { if (inp === iD) p.hasta = p.desde; else p.desde = p.hasta; }
+      dash.setParams(p);
+    });
+    inp.addEventListener('blur', syncFechas);
+  });
+  document.querySelectorAll('[data-rango]').forEach((b) => b.addEventListener('click', () => {
+    const hoy = LC.todayAR(), r = b.dataset.rango;
+    const iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const t = Date.parse(hoy + 'T00:00:00Z');
+    if (r === 'hoy') dash.setParams({ desde: hoy, hasta: hoy });
+    else if (r === '7') dash.setParams({ desde: iso(t - 6 * 864e5), hasta: hoy });
+    else if (r === 'mes') dash.setParams({ desde: hoy.slice(0, 8) + '01', hasta: hoy });
+    else if (r === 'mesant') {
+      const first = Date.parse(hoy.slice(0, 8) + '01T00:00:00Z');
+      const fin = iso(first - 864e5);
+      dash.setParams({ desde: fin.slice(0, 8) + '01', hasta: fin });
+    }
+  }));
+
+  // Formulario de supuestos
+  const form = document.getElementById('lc-form');
+  function syncForm() {
+    if (!form) return;
+    const d = dash.data('supuestos');
+    const row = (d.status === 'ok' && d.data && d.data[0]) || {};
+    form.querySelectorAll('input').forEach((inp) => {
+      if (document.activeElement === inp) return;
+      const v = row[inp.name];
+      inp.value = v == null ? LC.DEFAULTS[inp.name] : v;
+    });
+  }
+  dash.onData(() => { syncFechas(); syncForm(); });
+  const btn = document.getElementById('lc-guardar');
+  if (btn) btn.addEventListener('click', async () => {
+    const row = {};
+    form.querySelectorAll('input').forEach((inp) => { const v = Number(inp.value); row[inp.name] = Number.isFinite(v) ? v : LC.DEFAULTS[inp.name]; });
+    let ok = true;
+    try { const db = await claude.use('db'); await db.doc('data/supuestos').set(row); } catch (e) { ok = false; }
+    document.querySelectorAll('#lc-ok').forEach((s) => { s.hidden = !ok; });
+    document.querySelectorAll('#lc-err').forEach((s) => { s.hidden = ok; });
+  });
+</script>
+<script src="charts.js"></script>
+
+</div>
+</body>
+</html>

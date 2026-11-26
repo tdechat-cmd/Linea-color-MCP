@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Usuarios · Tablero Linea Color</title>
+<link rel="stylesheet" href="theme.css">
+<style>
+  .u { display:flex; flex-direction:column; gap:20px; }
+  .card { background:var(--color-panel); border:1px solid var(--color-border-line); border-radius:var(--cds-radius); padding:16px; }
+  h1 { font-family:var(--font-anthropic-serif); font-weight:400; margin:0; }
+  h2 { font-size:17px; margin:0 0 10px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
+  label { display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--color-fg-muted); }
+  input { font:inherit; color:var(--color-fg); background:var(--color-bg); border:1px solid var(--color-border-line); border-radius:8px; padding:7px 10px; }
+  button.b { font:inherit; font-size:13px; color:var(--color-fg); background:var(--color-panel); border:1px solid var(--color-border-line); border-radius:999px; padding:6px 12px; cursor:pointer; }
+  button.p { background:var(--color-fg); color:var(--color-bg); border-color:var(--color-fg); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--color-border-line); }
+  .msg { font-size:13px; color:var(--color-fg-muted); }
+  .bad { color:var(--color-bad); }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="lc-top">
+  <strong>Linea Color</strong>
+  <nav><a href="./">Volver al tablero</a><form method="post" action="/logout" style="display:inline"><button type="submit">Salir</button></form></nav>
+</div>
+<div id="dash-root" class="u">
+  <h1>Mi cuenta</h1>
+  <section class="card">
+    <h2>Cambiar mi contraseña</h2>
+    <div class="row">
+      <label>Contraseña actual<input id="pw-actual" type="password" autocomplete="current-password"></label>
+      <label>Nueva (10+ caracteres)<input id="pw-nueva" type="password" autocomplete="new-password"></label>
+      <button class="b p" id="pw-ok" type="button">Cambiar</button>
+      <span class="msg" id="pw-msg"></span>
+    </div>
+  </section>
+
+  <section class="card" id="admin" hidden>
+    <h2>Usuarios</h2>
+    <p class="msg">Admin: administra usuarios y edita todo. Editor: carga supuestos, insumos y consumos. Lector: solo mira.</p>
+    <div class="scroll"><table><thead><tr><th>Email</th><th>Nombre</th><th>Rol</th><th></th></tr></thead><tbody id="u-body"></tbody></table></div>
+    <h2 style="margin-top:16px">Agregar usuario</h2>
+    <div class="row">
+      <label>Email<input id="n-email" type="email"></label>
+      <label>Nombre<input id="n-nombre" type="text"></label>
+      <label>Rol<select id="n-rol" class="dash-select"><option value="lector">Lector</option><option value="editor">Editor</option><option value="admin">Admin</option></select></label>
+      <label>Contraseña inicial (10+)<input id="n-pass" type="password" autocomplete="new-password"></label>
+      <button class="b p" id="n-ok" type="button">Agregar</button>
+      <span class="msg" id="n-msg"></span>
+    </div>
+  </section>
+</div>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  async function api(method, url, body) {
+    const r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    if (r.status === 401) { location.href = '/login'; throw new Error('Sesión vencida'); }
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error((j && j.error) || r.statusText);
+    return j;
+  }
+  const say = (el, t, bad) => { el.textContent = t; el.classList.toggle('bad', !!bad); };
+  $('pw-ok').onclick = async () => {
+    try { await api('POST', '/api/me/password', { actual: $('pw-actual').value, nueva: $('pw-nueva').value }); $('pw-actual').value = ''; $('pw-nueva').value = ''; say($('pw-msg'), 'Listo, contraseña cambiada.'); }
+    catch (e) { say($('pw-msg'), e.message, true); }
+  };
+  const me = await api('GET', '/api/me');
+  if (me.rol !== 'admin') return;
+  $('admin').hidden = false;
+  async function list() {
+    const { rows } = await api('GET', '/api/usuarios');
+    const tb = $('u-body'); tb.replaceChildren();
+    for (const u of rows) {
+      const tr = tb.insertRow();
+      tr.insertCell().textContent = u.email;
+      tr.insertCell().textContent = u.nombre || '';
+      const sel = document.createElement('select'); sel.className = 'dash-select';
+      for (const r of ['lector', 'editor', 'admin']) sel.add(new Option(r[0].toUpperCase() + r.slice(1), r));
+      sel.value = u.rol;
+      sel.onchange = async () => { try { await api('PATCH', '/api/usuarios/' + u.id, { rol: sel.value }); } catch (e) { alertMsg(e.message); sel.value = u.rol; } };
+      tr.insertCell().appendChild(sel);
+      const td = tr.insertCell();
+      const pw = document.createElement('button'); pw.className = 'b'; pw.textContent = 'Nueva contraseña';
+      pw.onclick = async () => { const p = window.prompt('Nueva contraseña para ' + u.email + ' (10+ caracteres)'); if (!p) return; try { await api('PATCH', '/api/usuarios/' + u.id, { password: p }); say($('n-msg'), 'Contraseña cambiada para ' + u.email + '.'); } catch (e) { say($('n-msg'), e.message, true); } };
+      const del = document.createElement('button'); del.className = 'b'; del.textContent = 'Borrar'; del.style.marginLeft = '6px';
+      del.onclick = async () => { if (!window.confirm('¿Borrar a ' + u.email + '?')) return; try { await api('DELETE', '/api/usuarios/' + u.id); list(); } catch (e) { say($('n-msg'), e.message, true); } };
+      td.append(pw, del);
+    }
+  }
+  function alertMsg(t) { say($('n-msg'), t, true); }
+  $('n-ok').onclick = async () => {
+    try {
+      await api('POST', '/api/usuarios', { email: $('n-email').value, nombre: $('n-nombre').value, rol: $('n-rol').value, password: $('n-pass').value });
+      ['n-email', 'n-nombre', 'n-pass'].forEach((id) => { $(id).value = ''; });
+      say($('n-msg'), 'Usuario agregado. Pasale la contraseña inicial por un canal seguro.');
+      list();
+    } catch (e) { say($('n-msg'), e.message, true); }
+  };
+  list();
+})();
+</script>
+</body>
+</html>

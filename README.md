@@ -34,3 +34,16 @@ Cargarla en claude.ai → Configuración → Conectores → Agregar conector per
 npm install
 MCP_SECRET=... TIENDANUBE_STORE_ID=... TIENDANUBE_ACCESS_TOKEN=... npm start
 ```
+
+## Tablero comercial (opcional, mismo servicio)
+
+El servicio también sirve el tablero comercial y de precosteo con login (código en `tablero/`). Se activa solo si existe `DATABASE_URL`; sin base, el MCP funciona igual que siempre.
+
+| Variable | Valor |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (agregar una base PostgreSQL al proyecto) |
+| `SESSION_SECRET` | Cadena aleatoria de 32+ caracteres |
+| `ADMIN_EMAIL` | Email del primer administrador |
+| `ADMIN_PASSWORD` | Contraseña inicial del admin (10+ caracteres); borrarla después de entrar |
+
+Entrada: `https://<tu-servicio>.up.railway.app/login`. Usa las mismas variables de Tiendanube que el MCP.
