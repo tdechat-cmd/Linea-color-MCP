@@ -26,11 +26,18 @@ const PUBLIC = path.join(__dirname, "..", "public");
 const D3_FILE = path.join(__dirname, "..", "node_modules", "d3", "dist", "d3.min.js");
 
 const db = createDb(DATABASE_URL);
-const tn = new TiendanubeClient({
-  storeId: TIENDANUBE_STORE_ID,
-  accessToken: TIENDANUBE_ACCESS_TOKEN,
-  userAgent: TIENDANUBE_USER_AGENT || "Linea Color Tablero",
-});
+let tnClient = null;
+const tn = {
+  get(path, query) {
+    if (!tnClient) {
+      if (!TIENDANUBE_STORE_ID || !TIENDANUBE_ACCESS_TOKEN) {
+        const e = new Error("Falta configurar TIENDANUBE_STORE_ID o TIENDANUBE_ACCESS_TOKEN en Railway"); e.status = 503; throw e;
+      }
+      tnClient = new TiendanubeClient({ storeId: TIENDANUBE_STORE_ID, accessToken: TIENDANUBE_ACCESS_TOKEN, userAgent: TIENDANUBE_USER_AGENT || "Linea Color Tablero" });
+    }
+    return tnClient.get(path, query);
+  },
+};
 
 // ---------- Tiendanube: pedidos y catálogo ----------
 const cache = new Map();
@@ -288,7 +295,7 @@ api.delete("/usuarios/:id", admin, wrap(async (req, res) => {
 
 app.use("/api", api);
 app.use((err, _req, res, _next) => {
-  const status = err.status && err.status < 500 ? err.status : 500;
+  const status = err.status && (err.status < 500 || err.status === 503) ? err.status : 500;
   if (status === 500) console.error(err);
   res.status(status).json({ error: status === 500 ? (String(err.message || "").startsWith("Tiendanube") ? "No se pudo leer Tiendanube" : "Error interno") : err.message });
 });
