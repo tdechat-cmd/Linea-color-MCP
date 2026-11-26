@@ -1,0 +1,20 @@
+{
+  "name": "linea-color-tablero",
+  "version": "1.0.0",
+  "description": "Tablero comercial y de precosteo de Linea Color, con login",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.3",
+    "cookie-session": "2.1.1",
+    "d3": "7.9.2",
+    "express": "5.3.0",
+    "pg": "8.23.1"
+  }
+}

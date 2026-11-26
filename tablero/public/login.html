@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingresar · Tablero Linea Color</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --fg:#1d1d1b; --muted:#6b6a66; --bg:#faf9f6; --panel:#fff; --line:#e5e2db; --bad:#c0392b; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#f1efe9; --muted:#a8a59d; --bg:#1c1b19; --panel:#262522; --line:#3a3833; --bad:#ec6b5e; } }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--bg); color:var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; padding:16px; }
+  form { width:100%; max-width:360px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:28px; display:flex; flex-direction:column; gap:14px; }
+  h1 { font-family: Georgia, serif; font-weight:400; font-size:26px; margin:0; }
+  p { margin:0; color:var(--muted); font-size:14px; }
+  label { display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--muted); }
+  input { font:inherit; font-size:15px; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  button { font:inherit; font-size:15px; background:var(--fg); color:var(--bg); border:0; border-radius:999px; padding:11px; cursor:pointer; margin-top:4px; }
+  .err { color:var(--bad); font-size:13px; }
+</style>
+</head>
+<body>
+<form method="post" action="/login">
+  <h1>Linea Color</h1>
+  <p>Tablero comercial y de precosteo</p>
+  <p class="err" id="err" hidden></p>
+  <label>Email<input name="email" type="email" autocomplete="username" required autofocus></label>
+  <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
+  <button type="submit">Ingresar</button>
+</form>
+<script>
+  const e = new URLSearchParams(location.search).get('e');
+  if (e) { const p = document.getElementById('err'); p.hidden = false; p.textContent = e === 'bloqueado' ? 'Demasiados intentos. Probá de nuevo en 15 minutos.' : 'Email o contraseña incorrectos.'; }
+</script>
+</body>
+</html>
